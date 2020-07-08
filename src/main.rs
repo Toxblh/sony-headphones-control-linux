@@ -1,3 +1,6 @@
+// extern crate bluetooth;
+
+use std::str::FromStr;
 use clap::{App};
 use bluetooth_serial_port::{BtSocket, BtProtocol, BtAddr};
 use std::io::Write;
@@ -17,11 +20,14 @@ fn get_packet(enabled: bool, noise_cancelling: u8, volume: u8, voice: u8) -> [u8
 
     let data:[u8;14] = [12, 0, 0, 0, 0, 8, 104, 2, enabled_value, 2, noise_cancelling, 1, voice, volume];
 
+    let mut control_sum_t: u8 = data.iter().fold(0, |sum, elem| sum + elem);
+    println!("{:?}", control_sum_t);
     let mut control_sum: u8 = 0;
 
     for b in data.iter() {
         control_sum = control_sum + b;
     }
+    println!("{:?}", control_sum);
 
     let mut ready_packet:Vec<u8> =  Vec::new();
     ready_packet.push(62);
@@ -94,7 +100,7 @@ fn main() {
     let uuid_mode = std::string::String::from("96cc203e-5068-46ad-b32d-e316f5e069ba");
 
     let mut socket = BtSocket::new(BtProtocol::RFCOMM).unwrap();
-    let addr = BtAddr::from_str(&mac).unwrap();
+    let addr = BtAddr::from_str(mac).unwrap();
 
     // TODO: Manual write connection to RFCOMM socket via grab info from about port from service
 

@@ -9,5 +9,5 @@ edition = "2018"
 [dependencies]
 blurz = "0.4.0"
 clap = "3.0.0-beta.1"
-bluetooth-serial-port = "0.5.1"
-libc = "0.2.71"
+bluetooth-serial-port = "0.6.0"
+libc = "0.2.72"
