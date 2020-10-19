@@ -5,9 +5,13 @@ import os
 import dbus
 import bluetooth
 import json
+from pathlib import Path
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import QStringListModel
+
+CONFIG_FOLDER = str(Path.home()) + '/.config/sony-headphones-control'
+CONFIG_PATH = CONFIG_FOLDER + '/config.json'
 
 class Mode(enum.Enum):
     NoiseCancelling = 'noise-cancelling'
@@ -38,8 +42,7 @@ def getPacket(enabled: bool, noiseCancelling: int, volume: int, voice: bool):
 
 def setMode(mode):
 
-    with open('config.json', 'r') as f:
-        config = json.load(f)
+    config = openConfig()
 
     print('config', config['device'])
 
@@ -98,12 +101,13 @@ def setMode(mode):
 
 def openConfig():
     config = {'device': '', 'name': ''}
-    if os.path.exists("config.json"):
-        with open('config.json', 'r+') as f:
+    Path(CONFIG_FOLDER).mkdir(parents=True, exist_ok=True)
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, 'r') as f:
             config = json.load(f)
     else:
         print(config)
-        with open('config.json', 'w') as f:
+        with open(CONFIG_PATH, 'w+') as f:
             json.dump(config, f)
 
     return config
@@ -146,7 +150,7 @@ def saveDevice(index):
     devLabel.setText(device[0] + ": " + devAddr)
     config = {'device': devAddr, 'name': device[0]}
 
-    with open('config.json', 'w') as f:
+    with open(CONFIG_PATH, 'w') as f:
         json.dump(config, f)
 
 
