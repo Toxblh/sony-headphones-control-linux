@@ -1,13 +1,13 @@
 # Thanks https://github.com/impankratov/sony-headphones-control-py
 import enum
 import sys
+import os
 import dbus
 import bluetooth
 import json
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import QStringListModel
-
 
 class Mode(enum.Enum):
     NoiseCancelling = 'noise-cancelling'
@@ -96,6 +96,17 @@ def setMode(mode):
     sock.send(ambientSoundBytes)
     sock.close()
 
+def openConfig():
+    config = {'device': '', 'name': ''}
+    if os.path.exists("config.json"):
+        with open('config.json', 'r+') as f:
+            config = json.load(f)
+    else:
+        print(config)
+        with open('config.json', 'w') as f:
+            json.dump(config, f)
+
+    return config
 
 def getBlueDevices():
     bus = dbus.SystemBus()
@@ -142,8 +153,7 @@ def saveDevice(index):
 app = QApplication([])
 app.setQuitOnLastWindowClosed(False)
 
-with open('config.json', 'r') as f:
-    config = json.load(f)
+config = openConfig()
 
 # Tray
 icon = QIcon("icon.png")
@@ -171,10 +181,9 @@ quit = QAction('Quit')
 quit.triggered.connect(app.quit)
 
 menu = QMenu()
-print(config['name'])
-a = QAction(config['name'])
+name = QAction(config['name'])
 
-menu.addAction(a)
+menu.addAction(name)
 menu.addSeparator()
 menu.addAction(act_NC)
 menu.addAction(act_WC)
@@ -210,5 +219,9 @@ layout.addWidget(devLabel)
 layout.addWidget(view)
 window.setLayout(layout)
 window.show()
+
+# app_icon = QIcon()
+# app_icon.addFile('icon.png', QSize(330,330))
+# app.setWindowIcon(app_icon)
 
 app.exec_()
