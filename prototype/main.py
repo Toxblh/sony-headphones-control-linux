@@ -224,8 +224,7 @@ layout.addWidget(view)
 window.setLayout(layout)
 window.show()
 
-# app_icon = QIcon()
-# app_icon.addFile('icon.png', QSize(330,330))
-# app.setWindowIcon(app_icon)
+app_icon = QIcon('icon.png')
+app.setWindowIcon(app_icon)
 
 app.exec_()
