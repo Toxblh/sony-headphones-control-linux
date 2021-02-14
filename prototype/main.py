@@ -1,3 +1,5 @@
+#!/bin/python
+
 # Thanks https://github.com/impankratov/sony-headphones-control-py
 import enum
 import sys
