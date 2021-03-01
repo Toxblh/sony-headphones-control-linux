@@ -101,6 +101,81 @@ def setMode(mode):
     sock.send(ambientSoundBytes)
     sock.close()
 
+
+def send(sock, message):
+    """
+    This function sends a message through a bluetooth socket
+    """
+    sock.send(b"\r\n" + message + b"\r\n")
+
+def get_at_command(sock, line, device, battery):
+    """
+    Will try to get and print the battery level of supported devices
+    """
+    blevel = -1
+
+    if b"BRSF" in line:
+        send(sock, b"+BRSF: 1024")
+        send(sock, b"OK")
+    elif b"CIND=" in line:
+        send(sock, b"+CIND: (\"battchg\",(0-5))")
+        send(sock, b"OK")
+    elif b"CIND?" in line:
+        send(sock, b"+CIND: 5")
+        send(sock, b"OK")
+    elif b"BIND=?" in line:
+        # Announce that we support the battery level HF indicator
+        # https://www.bluetooth.com/specifications/assigned-numbers/hands-free-profile/
+        send(sock, b"+BIND: (2)")
+        send(sock, b"OK")
+    elif b"BIND?" in line:
+        # Enable battery level HF indicator
+        send(sock, b"+BIND: 2,1")
+        send(sock, b"OK")
+    elif b"XAPL=" in line:
+        send(sock, b"+XAPL: iPhone,7")
+        send(sock, b"OK")
+    elif b"IPHONEACCEV" in line:
+        parts = line.strip().split(b',')[1:]
+        if len(parts) > 1 and (len(parts) % 2) == 0:
+            parts = iter(parts)
+            params = dict(zip(parts, parts))
+            if b'1' in params:
+                blevel = (int(params[b'1']) + 1) * 10
+    elif b"BIEV=" in line:
+        params = line.strip().split(b"=")[1].split(b",")
+        if params[0] == b"2":
+            blevel = int(params[1])
+    elif b"XEVENT=BATTERY" in line:
+        params = line.strip().split(b"=")[1].split(b",")
+        blevel = int(params[1]) / int(params[2]) * 100
+    else:
+        send(sock, b"OK")
+
+    if blevel != -1:
+        print(f"Battery level for {device} is {blevel}%")
+        battery.setText(f"Battery: {blevel}%")
+        return False
+
+    return True
+
+def find_rfcomm_port(device):
+    """
+    Find the RFCOMM port number for a given bluetooth device
+    """
+    uuid = "0000111e-0000-1000-8000-00805f9b34fb"
+    
+    proto = bluetooth.find_service(address=device, uuid=uuid)
+    if len(proto) == 0:
+        print("Couldn't find the RFCOMM port number")
+        return 4
+
+    for pr in proto:
+        if 'protocol' in pr and pr['protocol'] == 'RFCOMM':
+            port = pr['port']
+            return port
+    return 4
+
 def openConfig():
     config = {'device': '', 'name': ''}
     Path(CONFIG_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -113,6 +188,24 @@ def openConfig():
             json.dump(config, f)
 
     return config
+
+def getBatteryLevel(battery):
+    battery.setText("Battery: ...%")
+    config = openConfig()
+    print('config', config['device'])
+
+    addr = config['device']
+    print("Searching for {}...".format(addr))
+
+    try:
+        port = find_rfcomm_port(addr)
+        sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+        sock.connect((addr, port))
+        while get_at_command(sock, sock.recv(128), addr, battery):
+            pass
+        sock.close()
+    except OSError as err:
+        print(f"{addr} is offline", err)
 
 def getBlueDevices():
     bus = dbus.SystemBus()
@@ -138,8 +231,8 @@ def getBlueDevices():
     return bt_devices
 
 
-def showSettings():
-    print("Connecting to")
+def showSettings(window):
+    window.show()
 
 
 def saveDevice(index):
@@ -156,10 +249,13 @@ def saveDevice(index):
         json.dump(config, f)
 
 
+config = openConfig()
+
+# App
 app = QApplication([])
 app.setQuitOnLastWindowClosed(False)
-
-config = openConfig()
+app_icon = QIcon('icon.png')
+app.setWindowIcon(app_icon)
 
 # Tray
 icon = QIcon("icon.png")
@@ -181,7 +277,11 @@ act_Dis = QAction('Disabled ambient sound')
 act_Dis.triggered.connect(lambda: setMode(Mode.Disabled))
 
 settings = QAction("Settings")
-settings.triggered.connect(showSettings)
+settings.triggered.connect(lambda: showSettings(window))
+
+battery = QAction("Battery")
+battery.triggered.connect(lambda: getBatteryLevel(battery))
+# getBatteryLevel(battery)
 
 quit = QAction('Quit')
 quit.triggered.connect(app.quit)
@@ -197,6 +297,7 @@ menu.addAction(act_AS)
 menu.addAction(act_Dis)
 menu.addSeparator()
 menu.addAction(settings)
+menu.addAction(battery)
 menu.addAction(quit)
 
 tray.setContextMenu(menu)
@@ -224,9 +325,6 @@ devLabel = QLabel("Current device: " +
 layout.addWidget(devLabel)
 layout.addWidget(view)
 window.setLayout(layout)
-window.show()
 
-app_icon = QIcon('icon.png')
-app.setWindowIcon(app_icon)
-
+# Start app
 app.exec_()
