@@ -108,6 +108,7 @@ def send(sock, message):
     """
     sock.send(b"\r\n" + message + b"\r\n")
 
+# Thanks https://github.com/TheWeirdDev/Bluetooth_Headset_Battery_Level
 def get_at_command(sock, line, device, battery):
     """
     Will try to get and print the battery level of supported devices
